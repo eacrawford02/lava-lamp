@@ -17,31 +17,56 @@ module metaball #(
     input px_stb, // New pixel strobe signal (begins output calculation)
     input int p_x, // Pixel sample x-position
     input int p_y, // Pixel sample y-position
-    output logic vld, // Output calculation is complete
+    output logic vld, // Output calculation is complete. Stays high until px_stb is driven high
     output logic [31:0] out // Output contribution to the sample weighting
   );
   logic [31:0] x = I_X, y = I_Y; // Position
   logic [31:0] v_x = IV_X, v_y = IV_Y;
-  // Since the adders are combinatorial and are driven by any change in the
-  // addends, we cannot directly increment the given coordinate by its
-  // associated speed as this would cause an infinite feedback loop. Instead,
-  // we introduce a buffer register to hold the incremented value and only
-  // store this in the source coordinate register once per update cycle.
-  logic [31:0] x_next, y_next;
-  qadd #(15, 32) sum_x(.a(x), .b(v_x), .c(x_next));
-  qadd #(15, 32) sum_y(.a(y), .b(v_y), .c(y_next));
 
+  // For all addition/subtraction operations, we assume the numbers are
+  // unsigned, i.e., the lower bounds of the coordinate system is 0 (no
+  // negative positions)
+  wire [31:0] dx, dy, dx_sq, dy_sq;
+  assign dx = p_x - x;
+  assign dy = p_y - y;
+  wire [63:0] rad_sq;
+  wire [31:0] dividend, divisor;
+  assign rad_sq = RAD[30:0] * RAD[30:0];
+  assign dividend = rad_sq[48:16];
+  qmult #(15,32) sq1(
+    .i_multiplicand(dx),
+    .i_multiplier(dx),
+    .o_result(dx_sq),
+    .ovr()
+  );
+  qmult #(15,32) sq2(
+    .i_multiplicand(dy),
+    .i_multiplier(dy),
+    .o_result(dy_sq),
+    .ovr()
+  );
+  assign divisor = dx_sq + dy_sq;
+  qdiv #(15,32) func(
+    .i_dividend(dividend),
+    .i_divisor(divisor),
+    .i_start(px_stb),
+    .i_clk(clk),
+    .o_quotient_out(out),
+    .o_complete(vld),
+    .o_overflow()
+  );
+  
   always_ff @ (posedge clk) begin
     if (rst) begin
       x <= I_X;
       y <= I_Y;
     end else begin
       if (mov_en) begin
-	x <= x_next;
-	y <= y_next;
+	x <= x + v_x;
+	y <= y + v_y;
 	// Toggle speed sign bits when bounds of display are reached
-	if (x_next >= WIDTH | x_next <= 0) v_x[31] = ~v_x[31];
-	if (y_next >= HEIGHT | y_next <= 0) v_y[31] = ~v_y[31];
+	if (x >= (WIDTH - RAD) || x <= RAD) v_x[31] = ~v_x[31];
+	if (y >= (HEIGHT - RAD) || y <= RAD) v_y[31] = ~v_y[31];
       end
     end
   end
