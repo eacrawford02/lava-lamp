@@ -31,8 +31,8 @@ module metaball #(
   assign dy = p_y - y;
   wire [63:0] rad_sq;
   wire [31:0] dividend, divisor;
-  assign rad_sq = RAD[30:0] * RAD[30:0];
-  assign dividend = rad_sq[48:16];
+  assign rad_sq = RAD * RAD;
+  assign dividend = rad_sq[45:15];
   qmult #(15,32) sq1(
     .i_multiplicand(dx),
     .i_multiplier(dx),
