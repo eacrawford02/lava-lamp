@@ -1,3 +1,4 @@
+// Copyright (C) 2022  Ewen Crawford
 `timescale 1ns / 1ps
 
 module tb ();

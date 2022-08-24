@@ -2,26 +2,34 @@
 `timescale 1ns / 1ps
 
 module metaball #(
-    parameter WIDTH = 32'h000f_8000, // Display width - 1 (x-axis) = 31
+    parameter WIDTH  = 32'h000f_8000, // Display width - 1 (x-axis) = 31
     parameter HEIGHT = 32'h000f_c000, // Display height - 1 (y-axis) = 63
-    parameter RAD = 32'h0001_4000, // Initial radius = 2.5
-    parameter I_X = 32'h0007_c000, // Initial x-position = 15.5 (centered)
-    parameter I_Y = 32'h0000_0000, // Initial y-position = 0 (bottom)
+    parameter RAD    = 32'h0001_4000, // Initial radius = 2.5
+    parameter I_X    = 32'h0007_c000, // Initial x-position = 15.5 (centered)
+    parameter I_Y    = 32'h0000_0000, // Initial y-position = 0 (bottom)
     // Speed hardcoded for 60 Hz update rate
-    parameter IV_X = 32'h0000_0000, // Initial x-speed = 0 px/cycle (0 px/s)
-    parameter IV_Y = 32'h0000_0333 // Initial y-speed = 0.025 px/cycle (1.5 px/s)
+    parameter IV_X   = 32'h0000_0000, // Initial x-speed = 0 px/cycle (0 px/s)
+    parameter IV_Y   = 32'h0000_0333  // Initial y-speed = 0.025 px/cycle 
+				      // (1.5 px/s)
   )(
-    input clk,
-    input rst,
-    input mov_en, // Move enable; update position when high
-    input px_stb, // New pixel strobe signal (begins output calculation)
-    input int p_x, // Pixel sample x-position
-    input int p_y, // Pixel sample y-position
-    output logic vld, // Output calculation is complete. Stays high until px_stb is driven high
-    output logic [31:0] out // Output contribution to the sample weighting
+    input               clk,
+    input               rst,
+    input               mov_en, // Move enable; update position when high
+    input               px_stb, // New pixel strobe signal (begins output 
+                                // calculation)
+    input int           p_x,    // Pixel sample x-position
+    input int           p_y,    // Pixel sample y-position
+    output logic        vld,    // Output calculation is complete. Stays high 
+                                // until px_stb is driven high
+    output logic [31:0] out     // Output contribution to the sample weighting
   );
-  logic [31:0] x = I_X, y = I_Y; // Position
-  logic [31:0] v_x = IV_X, v_y = IV_Y;
+
+  // Position
+  logic [31:0] x = I_X,
+	       y = I_Y;
+  // Speed
+  logic [31:0] v_x = IV_X,
+	       v_y = IV_Y;
 
   // For all addition/subtraction operations, we assume the numbers are
   // unsigned, i.e., the lower bounds of the coordinate system is 0 (no
@@ -29,10 +37,12 @@ module metaball #(
   wire [31:0] dx, dy, dx_sq, dy_sq;
   assign dx = p_x - x;
   assign dy = p_y - y;
+
   wire [63:0] rad_sq;
   wire [31:0] dividend, divisor;
   assign rad_sq = RAD * RAD;
   assign dividend = rad_sq[45:15];
+
   qmult #(15,32) sq1(
     .i_multiplicand(dx),
     .i_multiplier(dx),
