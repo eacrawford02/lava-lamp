@@ -27,12 +27,15 @@ module tb_buffer #(
     .dout(dout)
   );
 
-  function automatic void mem_status(string op);
-    logic [11:0] a_out = dut.buff_a.bram[addr];
-    logic [11:0] b_out = dut.buff_b.bram[addr];
-    logic ptr = dut.cur_buff;
+  task automatic mem_status(input string op);
+    logic [11:0] a_out, b_out;
+    logic ptr;
+    #1; // Delay can't come before variable declarations
+    a_out = dut.buff_a.bram[addr];
+    b_out = dut.buff_b.bram[addr];
+    ptr = dut.cur_buff;
     $display("%s\t%h\t%h\t%h\t%h\t%b", op, addr, a_out, b_out, dout, ptr);
-  endfunction
+  endtask
 
   logic [9:0] gen_addr;
   logic [11:0] gen_data;
@@ -49,18 +52,18 @@ module tb_buffer #(
     addr = gen_addr;
     din = gen_data;
     // Test write
-    en = 1;
-    w_en = 1;
     @ (posedge clk);
+    en <= 1;
+    w_en <= 1;
     mem_status("Write");
     // Test Swap
-    w_en = 0;
-    swap_en = 1;
     @ (posedge clk);
+    w_en <= 0;
+    swap_en <= 1;
     mem_status("Swap");
     // Check output after buffer swap
-    swap_en = 0;
     @ (posedge clk);
+    swap_en <= 0;
     mem_status("Hold En");
    $display("=== BUFFER TEST FINISHED ===");
     ->done;
