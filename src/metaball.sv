@@ -74,9 +74,9 @@ module metaball #(
       if (mov_en) begin
 	x <= x + v_x;
 	y <= y + v_y;
-	// Toggle speed sign bits when bounds of display are reached
-	if (x >= (WIDTH - RAD) || x <= RAD) v_x[31] = ~v_x[31];
-	if (y >= (HEIGHT - RAD) || y <= RAD) v_y[31] = ~v_y[31];
+	// Negate speed vectors when bounds of display are reached
+	if (x >= (WIDTH - RAD) || x <= RAD) v_x = ~v_x + 1;
+	if (y >= (HEIGHT - RAD) || y <= RAD) v_y = ~v_y + 1;
       end
     end
   end
