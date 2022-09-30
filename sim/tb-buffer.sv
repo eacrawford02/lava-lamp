@@ -22,7 +22,8 @@ module tb_buffer #(
     .en(en),
     .swap_en(swap_en),
     .w_en(w_en),
-    .addr(addr),
+    .w_addr(addr),
+    .r_addr(addr),
     .din(din),
     .dout(dout)
   );
