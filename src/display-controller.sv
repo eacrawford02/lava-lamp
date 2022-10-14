@@ -13,10 +13,13 @@ module dspl_ctrl (
     output [2:0] dout_btm,
     output [3:0] row_sel
 );
-  localparam SHIFT = 0, BLANK = 1, LATCH = 3, WAIT = 2;
+  localparam BLANK = 0, LATCH = 1, SHIFT = 3, WAIT = 2;
   logic [1:0] state;
 
-  logic [10:0] timer;
+  logic [11:0] timer;
+  logic [11:0] wait_timer;
+
+  logic [1:0] bit_sel;
 
   always_ff @ (posedge clk) begin
     if (rst) begin
@@ -24,8 +27,25 @@ module dspl_ctrl (
       case (state)
 	SHIFT: begin
 	  if (timer == 0) begin
-	    state <= BLANK;
-	    timer <= 4;
+	    case (bit_sel)
+	      1: begin
+		state <= WAIT;
+		timer <= 255;
+	      end
+	      2: begin
+		state <= WAIT;
+		timer <= 511;
+	      end
+	      3: begin
+		state <= WAIT;
+		timer <= 1023;
+	      end
+	      default: begin
+		state <= BLANK;
+		timer <= 4;
+	      end
+	    endcase
+	    bit_sel <= bit_sel + 1;
 	  end else begin
 	    timer <= timer - 1;
 	  end
@@ -40,7 +60,7 @@ module dspl_ctrl (
 	end
 	LATCH: begin
 	  if (timer == 0) begin
-	    state <= WAIT;
+	    state <= SHIFT;
 	    timer <= 255;
 	  end else begin
 	    timer <= timer - 1;
@@ -48,8 +68,8 @@ module dspl_ctrl (
 	end
 	WAIT: begin
 	  if (timer == 0) begin
-	    state <= SHIFT;
-	    timer <= 255;
+	    state <= BLANK;
+	    timer <= 4;
 	  end else begin
 	    timer <= timer - 1;
 	  end
@@ -57,6 +77,8 @@ module dspl_ctrl (
 	default: begin
 	  state <= SHIFT;
 	  timer <= 255;
+	  bit_sel <= 0;
+	  wait_timer <= 0;
 	end
       endcase
     end
