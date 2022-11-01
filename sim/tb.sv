@@ -15,6 +15,12 @@ module tb ();
     .done(tb2_done)
   );
 
+  event tb3_start, tb3_done;
+  tb_dspl_ctrl tb3(
+    .start(tb3_start),
+    .done(tb3_done)
+  );
+
   initial begin
     $display("=== SIMULATION STARTED ===");  
     $timeformat(-9, 0, " ns");
@@ -22,6 +28,8 @@ module tb ();
     wait (tb1_done.triggered);
     ->tb2_start;
     wait (tb2_done.triggered);
+    ->tb3_start;
+    wait (tb3_done.triggered);
     $display("=== SIMULATION FINISHED ===");
     $finish;
   end
