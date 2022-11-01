@@ -6,7 +6,13 @@ module lava_lamp #(
     parameter HEIGHT = 32'h000f_c000
   )(
     input clk,
-    input rst
+    input rst,
+    output sclk,
+    output latch,
+    output blank,
+    output [2:0] dout_top,
+    output [2:0] dout_btm,
+    output [3:0] row_sel
   );
 
   // Generate 60 Hz movement enable strobe signal.
@@ -54,14 +60,16 @@ module lava_lamp #(
 	w_mask   = 0;
   logic top_w_en = w_en & ~w_mask, // Write to top ram when write mask is 0 
 	btm_w_en = w_en & w_mask; // Write to bottom ram when write mask is 1
-  logic [9:0]  addr = 0;
-  logic [11:0] din, dout;
+  logic [9:0]  w_addr = 0,
+	       r_addr = 0;
+  logic [11:0] din;
   buffer top_buff(
     .clk(clk),
     .en(en),
     .swap_en(swap_en),
     .w_en(top_w_en),
-    .addr(addr),
+    .w_addr(w_addr),
+    .r_addr(r_addr),
     .din(din),
     .dout(dout)
   );
@@ -71,9 +79,24 @@ module lava_lamp #(
     .en(en),
     .swap_en(swap_en),
     .w_en(btm_w_en),
-    .addr(addr),
+    .w_addr(w_addr),
+    .r_addr(r_addr),
     .din(din),
     .dout(dout)
+  );
+
+  dspl_ctrl ctrl(
+    .clk(clk),
+    .rst(rst),
+    .din_top(dout_top),
+    .din_btm(dout_btm),
+    .r_addr(r_addr),
+    .sclk(sclk),
+    .latch(latch),
+    .blank(blank),
+    .dout_top(dout_top),
+    .dout_btm(dout_btm),
+    .row_sel(row_sel)
   );
 
   always_ff @ (posedge clk) begin
@@ -107,8 +130,8 @@ module lava_lamp #(
 	if (sum >= 32'h0000_8000) begin
 	  w_en <= 1;
 	  din <= '1; // R = 1, G = 1, B = 1 (white);
-	  if (addr == 1023) w_mask <= ~w_mask;
-	  addr <= addr + 1;
+	  if (w_addr == 1023) w_mask <= ~w_mask;
+	  w_addr <= w_addr + 1;
 	end
       end else begin
 	// Ensure that the strobe and enable signals only stay high for
