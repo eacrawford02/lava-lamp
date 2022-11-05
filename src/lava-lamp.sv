@@ -6,7 +6,7 @@ module lava_lamp #(
     parameter HEIGHT = 32'h000f_c000
   )(
     input clk,
-    input rst,
+    input rst_n,
     output sclk,
     output latch,
     output blank,
@@ -14,6 +14,8 @@ module lava_lamp #(
     output [2:0] dout_btm,
     output [3:0] row_sel
   );
+  
+  wire rst = !rst_n;
 
   // Generate 60 Hz movement enable strobe signal.
   // 2^32 / (100E6 / 60) = 2576.98 ~= 0xa11
@@ -58,11 +60,12 @@ module lava_lamp #(
 	swap_en  = 0,
 	w_en     = 0,
 	w_mask   = 0;
-  logic top_w_en = w_en & ~w_mask, // Write to top ram when write mask is 0 
-	btm_w_en = w_en & w_mask; // Write to bottom ram when write mask is 1
-  logic [9:0]  w_addr = 0,
-	       r_addr = 0;
+  wire  top_w_en = w_en & ~w_mask, // Write to top ram when write mask is 0 
+        btm_w_en = w_en & w_mask; // Write to bottom ram when write mask is 1
+  logic [9:0]  w_addr = 0;
+  wire  [9:0]  r_addr;
   logic [11:0] din;
+  wire  [11:0] dout_top_buff, dout_btm_buff;
   buffer top_buff(
     .clk(clk),
     .en(en),
@@ -71,7 +74,7 @@ module lava_lamp #(
     .w_addr(w_addr),
     .r_addr(r_addr),
     .din(din),
-    .dout(dout)
+    .dout(dout_top_buff)
   );
   
   buffer btm_buff(
@@ -82,14 +85,14 @@ module lava_lamp #(
     .w_addr(w_addr),
     .r_addr(r_addr),
     .din(din),
-    .dout(dout)
+    .dout(dout_btm_buff)
   );
 
   dspl_ctrl ctrl(
     .clk(clk),
     .rst(rst),
-    .din_top(dout_top),
-    .din_btm(dout_btm),
+    .din_top(dout_top_buff),
+    .din_btm(dout_btm_buff),
     .r_addr(r_addr),
     .sclk(sclk),
     .latch(latch),
@@ -107,8 +110,6 @@ module lava_lamp #(
       swap_en <= 0;
       w_en <= 0;
       w_mask <= 0;
-      top_w_en <= 0;
-      btm_w_en <= 0;
     end else begin
       if (mb1_vld & mb2_vld) begin
 	// Advance pixel position, wrapping around if display boundaries are

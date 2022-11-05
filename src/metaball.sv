@@ -35,6 +35,9 @@ module metaball #(
   // unsigned, i.e., the lower bounds of the coordinate system is 0 (no
   // negative positions)
   wire [31:0] dx, dy, dx_sq, dy_sq;
+  // Because the qmult module doesn't use the sign bits of the multiplicand or
+  // multiplier (dx[31] and dy[31] in this case), Vivado may throw a warning
+  // that p_x[31] and p_y[31] are unconnected. This is to be expected
   assign dx = p_x - x;
   assign dy = p_y - y;
 
