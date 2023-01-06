@@ -17,7 +17,7 @@ module buffer (
                addr_b;
   wire  [11:0] a_out,
                b_out;
-  logic        cur_buff = 0;
+  logic [1:0]  cur_buff = 0;
 
   assign w_en_a = w_en & ~cur_buff;
   assign w_en_b = w_en & cur_buff;
@@ -41,7 +41,7 @@ module buffer (
   );
   
   always_comb begin
-    if (cur_buff) begin
+    if (cur_buff[0]) begin
       addr_a <= r_addr;
       addr_b <= w_addr;
     end else begin
@@ -51,11 +51,18 @@ module buffer (
   end
 
   always_ff @ (posedge clk) begin
-      if (en & swap_en) cur_buff <= ~cur_buff;
+    // It takes one cycle for BRAM output to reflect r/w address change. We
+    // use cur_buff as a sort of shift register to account for this delay and
+    // ensure that the expected output is produced following a swap
+    if (en & swap_en) begin
+      cur_buff <= {cur_buff[0], ~cur_buff[1]};
+    end else begin
+      cur_buff <= {2{cur_buff[0]}};
+    end
   end
 
   // Opposite of what the current buffer should be
-  assign dout = cur_buff ? a_out : b_out;
+  assign dout = cur_buff[1] ? a_out : b_out;
 endmodule
 
 module bram_sp_rf (
