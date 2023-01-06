@@ -4,7 +4,7 @@
 module dspl_ctrl #(
     parameter CLK_FRAC   = 8,
     parameter MIN_WAIT   = 512, // Minimum number of clock cycles to shift data
-			      // into display
+			        // into display
     parameter SREG_WIDTH = 64,
     parameter LATCH_TIME = 4,
     parameter BLANK_TIME = 5
@@ -52,7 +52,7 @@ module dspl_ctrl #(
       bit_sel <= 0;
       latch <= 0;
       blank <= 1; // Leave display blanked until initial data is shifted in
-      row_sel <= 0;
+      row_sel <= 15;
       prev_sclk <= 0;
       clk_div <= 0;
       r_addr <= 0;
@@ -124,8 +124,8 @@ module dspl_ctrl #(
 	    state <= BLANK;
 	    timer <= BLANK_TIME - 1;
 	    blank <= 1;
-	    // Increment row after highest bit for last column is reached
-	    if (bit_sel == 3) row_sel <= row_sel + 1;
+	    // Increment row after highest bit for last column is *displayed*
+	    if (bit_sel == 0) row_sel <= row_sel + 1;
 	  end else begin
 	    timer <= timer - 1;
 	  end
@@ -136,7 +136,9 @@ module dspl_ctrl #(
 	  bit_sel <= 0;
 	  latch <= 0;
 	  blank <= 1; // Leave display blanked until initial data is shifted in
-	  row_sel <= 0;
+	  // Start at row 16 to account for row_sel increment in wait state 
+	  // after initial data (row 0) is shifted in
+	  row_sel <= 15;
 	  prev_sclk <= 0;
 	  clk_div <= 0;
 	  r_addr <= 0;
