@@ -64,7 +64,13 @@ bind tb_dspl_ctrl.dut dspl_ctrl_assertions sva(
   .bit_sel(bit_sel)
 );
 
-module dspl_ctrl_assertions (
+module dspl_ctrl_assertions #(
+  parameter CLK_FRAC   = 8,
+  parameter MIN_WAIT   = 512,
+  parameter SREG_WIDTH = 64,
+  parameter LATCH_TIME = 4,
+  parameter BLANK_TIME = 5
+) (
   input clk,
   input rst,
   input [11:0] din_top,
@@ -82,12 +88,16 @@ module dspl_ctrl_assertions (
 );
   // Assert that the display wait times are correct for binary coded
   // modulation
+  prop_bit0_sel: assert property (
+	@ (posedge clk) disable iff (rst)
+	(bit_sel != $past(bit_sel, 1) & bit_sel == 0) |-> (##1 $stable(bit_sel)[*(MIN_WAIT * $pow(2, 3) + BLANK_TIME + LATCH_TIME - 1)] ##1 !$stable(bit_sel))
+      );
   genvar i;
   generate
-    for (i = 0; i < 4; i++) begin : bit_sel_assert
+    for (i = 1; i < 4; i++) begin : bit_sel_assert
       prop_bit_sel: assert property (
 	@ (posedge clk) disable iff (rst)
-	(bit_sel != $past(bit_sel, 1) & bit_sel == i) |-> (##1 $stable(bit_sel)[*(256 * $pow(2, i) + 5 + 2 - 1)] ##1 !$stable(bit_sel))
+	(bit_sel != $past(bit_sel, 1) & bit_sel == i) |-> (##1 $stable(bit_sel)[*(MIN_WAIT * $pow(2, i - 1) + BLANK_TIME + LATCH_TIME - 1)] ##1 !$stable(bit_sel))
       );
     end
   endgenerate
@@ -99,11 +109,12 @@ module dspl_ctrl_assertions (
     !$stable(bit_sel) & bit_sel > 0 |-> bit_sel == $past(bit_sel, 1) + 1
   );
 
-  // Assert that sclk starts when the shift state is entered that the sclk 
-  // frequency is correct (1/4 of the source clock frequency)
+  // Assert that sclk starts when the shift state is entered and that the sclk 
+  // frequency and duration are correct (1/4 of the source clock frequency for
+  // 64 cycles)
   prop_sclk_on: assert property (
     @ (posedge clk) disable iff (rst)
-    (!$stable(state) & state == dut.SHIFT) |-> (!sclk ##1 !sclk ##1 sclk ##1 sclk)[*64]
+    (!$stable(state) & state == dut.SHIFT) |-> (sclk[->CLK_FRAC/2])[*SREG_WIDTH]
   );
 
   // Assert that sclk stops when no longer in the shift state
@@ -126,7 +137,7 @@ module dspl_ctrl_assertions (
   // Assert latch signal goes high during latch state with a 20 ms pulse width
   prop_latch_on: assert property (
     @ (posedge clk) disable iff (rst)
-    (!$stable(state) & state == dut.LATCH) |-> $rose(latch) ##2 $fell(latch)
+    (!$stable(state) & state == dut.LATCH) |-> $rose(latch) ##LATCH_TIME $fell(latch)
   );
 
   // Assert latch signal remains low while not in latch state
@@ -144,14 +155,14 @@ module dspl_ctrl_assertions (
   // Assert blank signal goes high during blank state with a 70 ms pulse width
   prop_blank_on: assert property (
     @ (posedge clk) disable iff (rst)
-    (!$stable(state) & state == dut.BLANK) |-> blank ##7 !blank
+    (!$stable(state) & state == dut.BLANK) |-> blank ##(LATCH_TIME+BLANK_TIME) !blank
   );
 
   // Assert blank signal remains low while not in blank state except for when
   // initially shifting in data at startup (takes 256 cycles)
   prop_blank_off: assert property (
     @ (posedge clk) disable iff (rst)
-    (state != dut.BLANK & state != dut.LATCH) & $time > 2565 |-> !blank
+    (state != dut.BLANK & state != dut.LATCH) & $time > (8*MIN_WAIT+LATCH_TIME+BLANK_TIME)*10+5 |-> !blank
   );
 
   // Assert that row select signal is held stable for the correct number of
@@ -160,7 +171,8 @@ module dspl_ctrl_assertions (
   // in the sequence following a reset
   prop_row_sel: assert property (
     @ (posedge clk) disable iff (rst)
-    !$stable(row_sel) |-> ##1 $stable(row_sel)[*3861 - 1:3868 - 1] ##1 !$stable(row_sel)
+    // Subtract 1 to account for ##1 delay from change in row_sel
+    !$stable(row_sel) & $time >= (8*MIN_WAIT)*10+5 |-> ##1 $stable(row_sel)[*(15*MIN_WAIT+4*BLANK_TIME+4*LATCH_TIME-1)] ##1 !$stable(row_sel)
   );
 
   // Assert that row select signal is incremented whenever it changes (barring
