@@ -49,8 +49,8 @@ module lava_lamp #(
   logic [31:0] mb2_out;
   metaball #(
     .I_Y(32'h001d_0000),
-    .IV_Y(32'hffff_f99a),
-    .RAD(32'h0002_8000)
+    .IV_Y(32'hffff_fbbc),
+    .RAD(32'h0005_0000)
   ) mb2 (
     .clk(clk),
     .rst(rst),
@@ -61,9 +61,27 @@ module lava_lamp #(
     .vld(mb2_vld),
     .out(mb2_out)
   );
+
+  logic mb3_vld;
+  logic [31:0] mb3_out;
+  metaball #(
+    .I_X(32'h000b0000),
+    .I_Y(32'h0001_4000),
+    .IV_Y(32'h0000_0ccc),
+    .RAD(32'h0001_4000)
+  ) mb3 (
+    .clk(clk),
+    .rst(rst),
+    .mov_en(mov_stb),
+    .px_stb(px_stb),
+    .p_x(p_x),
+    .p_y(p_y),
+    .vld(mb3_vld),
+    .out(mb3_out)
+  );
   
   logic [31:0] sum;
-  assign sum = mb1_out + mb2_out;
+  assign sum = mb1_out + mb2_out + mb3_out;
 
   logic	en       = 1,
 	swap_en  = 0,
@@ -75,6 +93,14 @@ module lava_lamp #(
   wire  [9:0]  r_addr;
   logic [11:0] din;
   wire  [11:0] dout_top_buff, dout_btm_buff;
+  
+  wire [11:0] rom_out;
+  rom px_data(
+    .clk(clk),
+    .en(1'b1),
+    .addr(w_addr + 1),
+    .dout(rom_out)
+  );
 
   buffer top_buff(
     .clk(clk),
@@ -124,7 +150,7 @@ module lava_lamp #(
     end else begin
       // Note that there is a 1 cycle delay between asserting px_stb and the
       // valid signals falling
-      if (mb1_vld & mb2_vld & ~px_stb) begin
+      if (mb1_vld & mb2_vld & mb3_vld & ~px_stb) begin
 	// Advance pixel position, wrapping around if display boundaries are
 	// reached
 	if (p_y >= HEIGHT) begin
@@ -145,7 +171,7 @@ module lava_lamp #(
 	w_addr <= w_addr + 1;
 	if (w_addr == 1023) w_mask <= ~w_mask;
 	if (sum >= 32'h0000_8000) begin
-	  din <= '1; // R = 1, G = 1, B = 1 (white);
+	  din <= rom_out; // Colour value currently being read from ROM
 	end else begin
 	  din <= 0;
 	end

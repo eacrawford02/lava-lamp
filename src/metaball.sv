@@ -9,6 +9,10 @@
 `define MIN(a, b) ((a) > (b) ? (b) : (a))
 `endif
 
+`ifndef ONE
+`define ONE 32'h0000_8000
+`endif
+
 module metaball #(
     parameter WIDTH  = 32'h000f_8000, // Display width - 1 (x-axis) = 31
     parameter HEIGHT = 32'h001f_8000, // Display height - 1 (y-axis) = 63
@@ -32,11 +36,14 @@ module metaball #(
     output logic [31:0] out     // Output contribution to the sample weighting
   );
 
+  localparam BOUNDED_X = `MAX(RAD + `ONE, `MIN(I_X, WIDTH - RAD - `ONE)),
+	     BOUNDED_Y = `MAX(RAD + `ONE, `MIN(I_Y, HEIGHT - RAD - `ONE));
+
   // Position
-  logic [31:0] x      = `MAX(RAD + 32'h1, `MIN(I_X, WIDTH - RAD - 32'h1)),
-	       y      = `MAX(RAD + 32'h1, `MIN(I_Y, HEIGHT - RAD - 32'h1)),
-	       next_x = I_X + IV_X,
-	       next_y = I_Y + IV_Y;
+  logic [31:0] x      = BOUNDED_X,
+	       y      = BOUNDED_Y,
+	       next_x = BOUNDED_X + IV_X,
+	       next_y = BOUNDED_Y + IV_Y;
   // Speed
   logic [31:0] v_x = IV_X,
 	       v_y = IV_Y;
@@ -65,12 +72,14 @@ module metaball #(
     .o_result(dx_sq),
     .ovr()
   );
+
   qmult #(15,32) sq2(
     .i_multiplicand(dy_abs),
     .i_multiplier(dy_abs),
     .o_result(dy_sq),
     .ovr()
   );
+
   assign divisor = dx_sq + dy_sq;
   qdiv #(15,32) func(
     .i_dividend(dividend),
@@ -84,10 +93,10 @@ module metaball #(
   
   always_ff @ (posedge clk) begin
     if (rst) begin
-      x <= I_X;
-      y <= I_Y;
-      next_x <= I_X + IV_X;
-      next_y <= I_Y + IV_Y;
+      x <= BOUNDED_X;
+      y <= BOUNDED_Y;
+      next_x <= BOUNDED_X + IV_X;
+      next_y <= BOUNDED_Y + IV_Y;
     end else begin
       if (mov_en) begin
 	x <= next_x;
