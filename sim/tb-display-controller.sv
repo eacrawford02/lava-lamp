@@ -83,7 +83,7 @@ module dspl_ctrl_assertions #(
   input logic [2:0] dout_btm,
   input logic [3:0] row_sel,
   input logic [1:0] state,
-  input logic [11:0] timer,
+  input logic [12:0] timer,
   input logic [1:0] bit_sel
 );
   // Assert that the display wait times are correct for binary coded

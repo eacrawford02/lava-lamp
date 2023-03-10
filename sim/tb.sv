@@ -21,6 +21,12 @@ module tb ();
     .done(tb3_done)
   );
 
+  event tb4_start, tb4_done;
+  tb_rom tb4(
+    .start(tb4_start),
+    .done(tb4_done)
+  );
+
   initial begin
     $display("=== SIMULATION STARTED ===");  
     $timeformat(-9, 0, " ns");
@@ -30,6 +36,8 @@ module tb ();
     wait (tb2_done.triggered);
     ->tb3_start;
     wait (tb3_done.triggered);
+    ->tb4_start;
+    wait (tb4_done.triggered);
     $display("=== SIMULATION FINISHED ===");
     $finish;
   end
