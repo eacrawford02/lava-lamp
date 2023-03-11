@@ -8,4 +8,4 @@ For a further explanation of the metaball math (with visuals), please refer to t
 
 # Demo
 
-https://user-images.githubusercontent.com/36207488/224448871-1daf6620-e4dd-4c70-9ade-a508313fa8b2.mp4
+https://user-images.githubusercontent.com/36207488/224456284-f23c4d17-3151-4060-87bd-e4996f75e2a3.mp4
